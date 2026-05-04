@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер проекта</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --amber: #EF9F27;
+    --amber-light: #FAEEDA;
+    --gray: #888780;
+    --gray-light: #F1EFE8;
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1a18;
+    --text-secondary: #6b6b68;
+    --text-tertiary: #aaa;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .logo { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+  .logo span { color: var(--green); }
+  .header-date { font-size: 13px; color: var(--text-secondary); font-family: 'DM Mono', monospace; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1.75rem; }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+  }
+  .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: 6px; }
+  .metric-val { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+  .metric-val.green { color: var(--green); }
+  .metric-val.amber { color: var(--amber); }
+
+  .progress-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.75rem;
+  }
+  .progress-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .progress-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+  .progress-pct { font-size: 36px; font-weight: 600; letter-spacing: -0.03em; color: var(--green); }
+  .bar-track { height: 12px; border-radius: 999px; background: var(--gray-light); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: var(--green); transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text-tertiary); margin-bottom: 10px; padding-left: 4px;
+  }
+
+  .task-list { display: flex; flex-direction: column; gap: 6px; }
+  .task-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: 28px 1fr 80px 56px 56px 90px;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.15s;
+  }
+  .task-row:hover { border-color: rgba(0,0,0,0.18); }
+
+  .task-num { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-tertiary); }
+  .task-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .mini-bar-wrap { height: 5px; border-radius: 99px; background: var(--gray-light); overflow: hidden; }
+  .mini-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .bar-green { background: var(--green); }
+  .bar-amber { background: var(--amber); }
+  .bar-gray { background: #ccc; }
+
+  .task-hours { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-secondary); text-align: center; }
+  .task-pct-label { font-size: 12px; font-weight: 500; text-align: center; }
+  .pct-green { color: var(--green); }
+  .pct-amber { color: var(--amber); }
+  .pct-gray { color: var(--text-tertiary); }
+
+  .log-btn {
+    font-size: 11px;
+    font-family: 'DM Sans', sans-serif;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    white-space: nowrap;
+  }
+  .log-btn:hover { background: var(--gray-light); border-color: rgba(0,0,0,0.18); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 1.75rem;
+    width: 360px;
+    max-width: 92vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  }
+  .modal-task-name {
+    font-size: 16px; font-weight: 600; margin-bottom: 1.25rem;
+    letter-spacing: -0.01em; color: var(--text);
+  }
+  .form-group { margin-bottom: 1rem; }
+  .form-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); display: block; margin-bottom: 6px; }
+  .form-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--green); }
+  .pct-display {
+    font-size: 13px; font-weight: 500; color: var(--green);
+    text-align: right; margin-top: 4px;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--green);
+    height: 4px;
+    cursor: pointer;
+  }
+  .modal-actions { display: flex; gap: 8px; margin-top: 1.5rem; }
+  .btn-save {
+    flex: 1;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-save:hover { opacity: 0.88; }
+  .btn-cancel {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .btn-cancel:hover { background: var(--gray-light); }
+
+  .history-section { margin-top: 2.5rem; }
+  .history-list { display: flex; flex-direction: column; gap: 4px; }
+  .history-item {
+    font-size: 12px; color: var(--text-secondary);
+    font-family: 'DM Mono', monospace;
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .history-item span { color: var(--text-tertiary); }
+
+  @media (max-width: 600px) {
+    .task-row { grid-template-columns: 24px 1fr 60px 46px 90px; }
+    .task-hours { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">project<span>.</span>track</div>
+  <div class="header-date" id="header-date"></div>
+</header>
+
+<main>
+  <div class="summary-grid" id="metrics"></div>
+
+  <div class="progress-card">
+    <div class="progress-header">
+      <span class="progress-title">Общий прогресс</span>
+      <span class="progress-pct" id="total-pct">0%</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" id="total-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Задачи</div>
+  <div class="task-list" id="task-list"></div>
+
+  <div class="history-section">
+    <div class="section-label">История логов</div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-task-name" id="modal-task-name"></div>
+    <div class="form-group">
+      <label class="form-label">Часов потрачено сегодня</label>
+      <input class="form-input" type="number" id="modal-hours" min="0.25" max="24" step="0.25" value="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Готовность задачи</label>
+      <input type="range" id="modal-pct" min="0" max="100" step="5" value="0">
+      <div class="pct-display" id="modal-pct-out">0%</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="saveLog()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TASK_NAMES = [
+  "Анализ требований","Проектирование БД","UI/UX макеты","Настройка окружения",
+  "Авторизация","API пользователей","API продуктов","API заказов",
+  "Фронтенд: главная","Фронтенд: каталог","Фронтенд: корзина","Фронтенд: профиль",
+  "Интеграция оплаты","Email-уведомления","Поиск и фильтры","Дашборд аналитики",
+  "Тестирование","Исправление багов","Документация","Деплой"
+];
+
+let state = JSON.parse(localStorage.getItem('proj_tracker_v2') || 'null') || {
+  tasks: TASK_NAMES.map(name => ({ name, hours: 0, pct: 0 })),
+  logs: []
+};
+
+function save() { localStorage.setItem('proj_tracker_v2', JSON.stringify(state)); }
+
+function fmtHours(h) { return h % 1 === 0 ? h + 'ч' : h.toFixed(2).replace(/0+$/,'') + 'ч'; }
+
+function barClass(pct) {
+  if (pct >= 100) return 'bar-green';
+  if (pct > 0) return 'bar-amber';
+  return 'bar-gray';
+}
+function pctClass(pct) {
+  if (pct >= 100) return 'pct-green';
+  if (pct > 0) return 'pct-amber';
+  return 'pct-gray';
+}
+
+function render() {
+  const tasks = state.tasks;
+  const n = tasks.length;
+  const done = tasks.filter(t => t.pct >= 100).length;
+  const active = tasks.filter(t => t.pct > 0 && t.pct < 100).length;
+  const totalHours = tasks.reduce((s, t) => s + t.hours, 0);
+  const avgPct = Math.round(tasks.reduce((s,t) => s + t.pct, 0) / n);
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Всего задач</div><div class="metric-val">${n}</div></div>
+    <div class="metric"><div class="metric-label">Готово</div><div class="metric-val green">${done}</div></div>
+    <div class="metric"><div class="metric-label">В работе</div><div class="metric-val amber">${active}</div></div>
+    <div class="metric"><div class="metric-label">Часов всего</div><div class="metric-val">${fmtHours(totalHours)}</div></div>
+  `;
+
+  document.getElementById('total-pct').textContent = avgPct + '%';
+  document.getElementById('total-bar').style.width = avgPct + '%';
+
+  const list = document.getElementById('task-list');
+  list.innerHTML = tasks.map((t, i) => `
+    <div class="task-row">
+      <div class="task-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="task-name" title="${t.name}">${t.name}</div>
+      <div class="mini-bar-wrap"><div class="mini-bar ${barClass(t.pct)}" style="width:${t.pct}%"></div></div>
+      <div class="task-hours">${fmtHours(t.hours)}</div>
+      <div class="task-pct-label ${pctClass(t.pct)}">${t.pct}%</div>
+      <button class="log-btn" onclick="openModal(${i})">+ время</button>
+    </div>
+  `).join('');
+
+  const histEl = document.getElementById('history-list');
+  if (state.logs.length === 0) {
+    histEl.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);padding:8px 4px;">Пока нет записей</div>';
+  } else {
+    histEl.innerHTML = [...state.logs].reverse().slice(0, 20).map(l =>
+      `<div class="history-item"><span>${l.date}</span>${l.task} — +${fmtHours(l.hours)}, готовность ${l.pct}%</div>`
+    ).join('');
+  }
+}
+
+let currentIdx = -1;
+function openModal(i) {
+  currentIdx = i;
+  const t = state.tasks[i];
+  document.getElementById('modal-task-name').textContent = t.name;
+  document.getElementById('modal-hours').value = 1;
+  document.getElementById('modal-pct').value = t.pct;
+  document.getElementById('modal-pct-out').textContent = t.pct + '%';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+document.getElementById('modal-pct').addEventListener('input', function() {
+  document.getElementById('modal-pct-out').textContent = this.value + '%';
+});
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function saveLog() {
+  const hrs = Math.round(parseFloat(document.getElementById('modal-hours').value) * 100) / 100 || 0;
+  const pct = +document.getElementById('modal-pct').value;
+  const t = state.tasks[currentIdx];
+  t.hours = Math.round((t.hours + hrs) * 100) / 100;
+  t.pct = pct;
+  const now = new Date();
+  const date = now.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'2-digit'});
+  state.logs.push({ date, task: t.name, hours: hrs, pct });
+  save();
+  closeModal();
+  render();
+}
+
+// Header date
+const d = new Date();
+document.getElementById('header-date').textContent =
+  d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'});
+
+render();
+</script>
+</body>
+</html>
